@@ -1,10 +1,8 @@
 import os, json, asyncio, logging
-from datetime import date, datetime
+from datetime import date
 from contextlib import asynccontextmanager
-from concurrent.futures import ThreadPoolExecutor
 
-import psycopg2
-import psycopg2.pool
+import asyncpg
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,66 +18,54 @@ BOT_TOKEN = os.environ["BOT_TOKEN"]
 AUTHORIZED_USER_ID = int(os.environ.get("AUTHORIZED_USER_ID", "7955194359"))
 
 db_pool = None
-executor = ThreadPoolExecutor(max_workers=4)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global db_pool
-    db_pool = psycopg2.pool.ThreadedConnectionPool(2, 10, DATABASE_URL)
-    await run_sync(init_db)
+    for attempt in range(10):
+        try:
+            db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10)
+            await init_db()
+            logger.info("DB pool created")
+            break
+        except Exception as e:
+            logger.error(f"DB pool attempt {attempt+1} failed: {e}")
+            await asyncio.sleep(5)
     asyncio.create_task(setup_bot())
     yield
-    db_pool.closeall()
+    if db_pool:
+        await db_pool.close()
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-async def run_sync(fn, *args):
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(executor, fn, *args)
-
-def db_exec(fn):
-    conn = db_pool.getconn()
-    try:
-        result = fn(conn)
-        conn.commit()
-        return result
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        db_pool.putconn(conn)
-
-def init_db():
-    def _run(conn):
-        with conn.cursor() as cur:
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS workout_sessions (
-                    id SERIAL PRIMARY KEY,
-                    user_id BIGINT NOT NULL,
-                    day_label TEXT NOT NULL,
-                    session_date DATE NOT NULL,
-                    exercises JSONB NOT NULL,
-                    created_at TIMESTAMPTZ DEFAULT NOW()
-                );
-                CREATE TABLE IF NOT EXISTS body_metrics (
-                    id SERIAL PRIMARY KEY,
-                    user_id BIGINT NOT NULL,
-                    metric_date DATE NOT NULL,
-                    weight_lbs FLOAT,
-                    body_fat_pct FLOAT,
-                    muscle_mass_pct FLOAT,
-                    chest_cm FLOAT,
-                    waist_cm FLOAT,
-                    arm_cm FLOAT,
-                    notes TEXT,
-                    created_at TIMESTAMPTZ DEFAULT NOW()
-                );
-            """)
-    db_exec(_run)
+async def init_db():
+    async with db_pool.acquire() as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS workout_sessions (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                day_label TEXT NOT NULL,
+                session_date DATE NOT NULL,
+                exercises JSONB NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS body_metrics (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                metric_date DATE NOT NULL,
+                weight_lbs FLOAT,
+                body_fat_pct FLOAT,
+                muscle_mass_pct FLOAT,
+                chest_cm FLOAT,
+                waist_cm FLOAT,
+                arm_cm FLOAT,
+                notes TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+        """)
     logger.info("DB initialized")
 
-# --- THE PROGRAM ---
 PROGRAM = {
     "A": {
         "name": "Chest + Triceps + Shoulders",
@@ -119,25 +105,19 @@ PROGRAM = {
     }
 }
 
-SCHEDULE = {0: "A", 2: "B", 4: "C"}  # Mon=0, Wed=2, Fri=4
+SCHEDULE = {0: "A", 2: "B", 4: "C"}
 
 def get_today_label():
     return SCHEDULE.get(date.today().weekday())
 
-def _get_last_session(user_id, day_label):
-    def _run(conn):
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT exercises, session_date FROM workout_sessions
-                WHERE user_id=%s AND day_label=%s
-                ORDER BY session_date DESC LIMIT 1
-            """, (user_id, day_label))
-            row = cur.fetchone()
-            if row:
-                return {"exercises": row[0], "session_date": row[1]}
-    return db_exec(_run)
-
-# --- ROUTES ---
+async def get_last_session(user_id: int, day_label: str):
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT exercises, session_date FROM workout_sessions
+            WHERE user_id=$1 AND day_label=$2
+            ORDER BY session_date DESC LIMIT 1
+        """, user_id, day_label)
+        return dict(row) if row else None
 
 @app.get("/health")
 async def health():
@@ -152,9 +132,8 @@ async def get_today(user_id: int = AUTHORIZED_USER_ID):
     day_label = get_today_label()
     if not day_label:
         return {"rest_day": True, "message": "Rest day or Lagree day 🧘"}
-    workout = {**PROGRAM[day_label]}
-    workout["exercises"] = [dict(e) for e in workout["exercises"]]
-    last = await run_sync(_get_last_session, user_id, day_label)
+    workout = {**PROGRAM[day_label], "exercises": [dict(e) for e in PROGRAM[day_label]["exercises"]]}
+    last = await get_last_session(user_id, day_label)
     if last:
         last_map = {ex["exercise_id"]: ex for ex in last["exercises"]}
         for ex in workout["exercises"]:
@@ -170,9 +149,8 @@ async def get_today(user_id: int = AUTHORIZED_USER_ID):
 async def get_workout(day_label: str, user_id: int = AUTHORIZED_USER_ID):
     if day_label not in PROGRAM:
         raise HTTPException(404, "Invalid day")
-    workout = {**PROGRAM[day_label]}
-    workout["exercises"] = [dict(e) for e in workout["exercises"]]
-    last = await run_sync(_get_last_session, user_id, day_label)
+    workout = {**PROGRAM[day_label], "exercises": [dict(e) for e in PROGRAM[day_label]["exercises"]]}
+    last = await get_last_session(user_id, day_label)
     if last:
         last_map = {ex["exercise_id"]: ex for ex in last["exercises"]}
         for ex in workout["exercises"]:
@@ -190,29 +168,21 @@ class WorkoutLog(BaseModel):
 
 @app.post("/api/workout/log")
 async def log_workout(data: WorkoutLog):
-    def _run(conn):
-        with conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO workout_sessions (user_id, day_label, session_date, exercises)
-                VALUES (%s, %s, %s, %s)
-            """, (data.user_id, data.day_label, date.today(), json.dumps(data.exercises)))
-    await run_sync(db_exec, _run)
+    async with db_pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO workout_sessions (user_id, day_label, session_date, exercises)
+            VALUES ($1, $2, $3, $4)
+        """, data.user_id, data.day_label, date.today(), json.dumps(data.exercises))
     return {"ok": True}
 
 @app.get("/api/sessions")
 async def get_sessions(user_id: int = AUTHORIZED_USER_ID, limit: int = 50):
-    def _run(conn):
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT id, day_label, session_date, exercises FROM workout_sessions
-                WHERE user_id=%s ORDER BY session_date DESC LIMIT %s
-            """, (user_id, limit))
-            cols = ["id", "day_label", "session_date", "exercises"]
-            return [dict(zip(cols, r)) for r in cur.fetchall()]
-    rows = await run_sync(db_exec, _run)
-    for r in rows:
-        r["session_date"] = str(r["session_date"])
-    return rows
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, day_label, session_date, exercises FROM workout_sessions
+            WHERE user_id=$1 ORDER BY session_date DESC LIMIT $2
+        """, user_id, limit)
+    return [{"id": r["id"], "day_label": r["day_label"], "session_date": str(r["session_date"]), "exercises": r["exercises"]} for r in rows]
 
 class MetricsLog(BaseModel):
     user_id: int = AUTHORIZED_USER_ID
@@ -228,44 +198,35 @@ class MetricsLog(BaseModel):
 @app.post("/api/metrics")
 async def log_metrics(data: MetricsLog):
     d = date.fromisoformat(data.metric_date) if data.metric_date else date.today()
-    def _run(conn):
-        with conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO body_metrics (user_id, metric_date, weight_lbs, body_fat_pct, muscle_mass_pct, chest_cm, waist_cm, arm_cm, notes)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            """, (data.user_id, d, data.weight_lbs, data.body_fat_pct, data.muscle_mass_pct,
-                  data.chest_cm, data.waist_cm, data.arm_cm, data.notes))
-    await run_sync(db_exec, _run)
+    async with db_pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO body_metrics (user_id, metric_date, weight_lbs, body_fat_pct, muscle_mass_pct, chest_cm, waist_cm, arm_cm, notes)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        """, data.user_id, d, data.weight_lbs, data.body_fat_pct, data.muscle_mass_pct,
+             data.chest_cm, data.waist_cm, data.arm_cm, data.notes)
     return {"ok": True}
 
 @app.get("/api/metrics")
 async def get_metrics(user_id: int = AUTHORIZED_USER_ID, limit: int = 30):
-    def _run(conn):
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT id, metric_date, weight_lbs, body_fat_pct, muscle_mass_pct,
-                       chest_cm, waist_cm, arm_cm, notes
-                FROM body_metrics WHERE user_id=%s
-                ORDER BY metric_date DESC LIMIT %s
-            """, (user_id, limit))
-            cols = ["id","metric_date","weight_lbs","body_fat_pct","muscle_mass_pct","chest_cm","waist_cm","arm_cm","notes"]
-            return [dict(zip(cols, r)) for r in cur.fetchall()]
-    rows = await run_sync(db_exec, _run)
-    for r in rows:
-        r["metric_date"] = str(r["metric_date"])
-    return rows
+    async with db_pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, metric_date, weight_lbs, body_fat_pct, muscle_mass_pct,
+                   chest_cm, waist_cm, arm_cm, notes
+            FROM body_metrics WHERE user_id=$1
+            ORDER BY metric_date DESC LIMIT $2
+        """, user_id, limit)
+    return [{"id": r["id"], "metric_date": str(r["metric_date"]), "weight_lbs": r["weight_lbs"],
+             "body_fat_pct": r["body_fat_pct"], "muscle_mass_pct": r["muscle_mass_pct"],
+             "chest_cm": r["chest_cm"], "waist_cm": r["waist_cm"], "arm_cm": r["arm_cm"],
+             "notes": r["notes"]} for r in rows]
 
-# --- BOT ---
 async def setup_bot():
     await asyncio.sleep(5)
     domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
     if domain:
         webhook_url = f"https://{domain}/bot/webhook"
         async with httpx.AsyncClient() as client:
-            r = await client.post(
-                f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook",
-                json={"url": webhook_url}
-            )
+            r = await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook", json={"url": webhook_url})
             logger.info(f"Webhook: {r.json()}")
 
 @app.post("/bot/webhook")
@@ -291,5 +252,4 @@ async def send_tg(chat_id, text, reply_markup=None):
     async with httpx.AsyncClient() as client:
         await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json=payload)
 
-# Serve frontend
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

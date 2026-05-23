@@ -240,9 +240,7 @@ async def bot_webhook(request: Request):
     if text.startswith("/start"):
         domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
         app_url = f"https://{domain}"
-        await send_tg(chat_id, "🐿️ *Squirrel Gym* — Progressive overload tracker\n\nTap below to open:", {
-            "inline_keyboard": [[{"text": "🏋️ Open Squirrel Gym", "web_app": {"url": app_url}}]]
-        })
+        await send_tg(chat_id, f"🐿️ *Squirrel Gym* — Progressive overload tracker\n\nOpen your app here:\n{app_url}")
     return {"ok": True}
 
 async def send_tg(chat_id, text, reply_markup=None):

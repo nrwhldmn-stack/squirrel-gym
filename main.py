@@ -633,4 +633,14 @@ async def send_tg(chat_id, text, parse_mode=None, reply_markup=None):
     async with httpx.AsyncClient() as client:
         await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json=payload)
 
+from fastapi.responses import FileResponse
+from fastapi import Response
+
+@app.get("/")
+async def serve_index(response: Response):
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return FileResponse("static/index.html")
+
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

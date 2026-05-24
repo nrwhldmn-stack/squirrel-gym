@@ -254,8 +254,18 @@
 </nav>
 
 <script>
-const API = '';
+const API = 'https://squirrel-gym-production.up.railway.app';
 const USER_ID = 7955194359;
+
+// Catch all errors and show them
+window.onerror = function(msg, src, line, col, err) {
+  const el = document.getElementById('screen-home');
+  if (el) el.innerHTML = '<div style="padding:20px;color:red;font-size:12px;word-break:break-all">JS Error: '+msg+' ('+src+':'+line+')</div>';
+};
+window.addEventListener('unhandledrejection', function(e) {
+  const el = document.getElementById('screen-home');
+  if (el) el.innerHTML = '<div style="padding:20px;color:red;font-size:12px;word-break:break-all">Promise Error: '+e.reason+'</div>';
+});
 const DAY_LABELS = {0:'A', 2:'B', 4:'C'};
 let program = null;
 let currentDayLabel = null;

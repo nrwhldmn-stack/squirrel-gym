@@ -633,10 +633,14 @@ async def send_tg(chat_id, text, parse_mode=None, reply_markup=None):
     async with httpx.AsyncClient() as client:
         await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json=payload)
 
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 @app.get("/")
 async def serve_index():
+    return RedirectResponse(url="https://nrwhldmn-stack.github.io/squirrel-gym/", status_code=302)
+
+@app.get("/app")
+async def serve_app():
     return HTMLResponse(content=HTML_CONTENT, headers={
         "Cache-Control": "no-cache, no-store, must-revalidate",
         "Pragma": "no-cache",

@@ -113,6 +113,7 @@
 
 <!-- HOME -->
 <div id="screen-home" class="screen active">
+  <div id="debug-banner" style="background:#6ee7b7;color:#000;padding:10px;border-radius:8px;margin-bottom:10px;font-weight:600;font-size:13px">⚡ App loaded — JS initializing...</div>
   <div style="padding-top:8px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <div><h1>Squirrel 🐿️</h1><div style="font-size:12px;color:var(--muted)" id="home-date"></div></div>
@@ -720,9 +721,17 @@ async function loadMetricsHistory() {
 }
 
 async function init() {
-  if (window.Telegram?.WebApp) { Telegram.WebApp.ready(); Telegram.WebApp.expand(); }
-  await loadHome();
-  await loadWorkoutList();
+  const banner = document.getElementById('debug-banner');
+  try {
+    if (window.Telegram?.WebApp) { Telegram.WebApp.ready(); Telegram.WebApp.expand(); }
+    if (banner) banner.textContent = '⚡ TG ready, loading data...';
+    await loadHome();
+    if (banner) banner.remove();
+    await loadWorkoutList();
+  } catch(e) {
+    if (banner) banner.style.background = '#ef4444';
+    if (banner) banner.textContent = '❌ Error: ' + e.message + ' | ' + e.stack?.split('\n')[1];
+  }
 }
 
 init();

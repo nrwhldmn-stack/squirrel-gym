@@ -282,7 +282,15 @@ async function openWorkout(dl){
   go('gym');curDay=dl;sess={};
   document.getElementById('gym-list').classList.add('hidden');
   document.getElementById('gym-session').classList.remove('hidden');
-  const d=await req('/api/workout/'+dl+'?user_id='+UID),w=d.workout;
+  document.getElementById('session-content').innerHTML='<div style="padding:20px;text-align:center;color:#888">Loading...</div>';
+  let d, w;
+  try{
+    d=await req('/api/workout/'+dl+'?user_id='+UID);
+    w=d.workout;
+  }catch(e){
+    document.getElementById('session-content').innerHTML='<div style="padding:20px;color:#ef4444">Failed to load workout. Check connection and try again.</div>';
+    return;
+  }
   document.getElementById('session-content').innerHTML=`<h2>Day ${dl} — ${w.name}</h2>`+
     w.exercises.map((ex,i)=>`<div class="ex-card"><div style="margin-bottom:6px"><div class="ex-name">${ex.name}</div><div class="ex-tgt">${ex.sets} sets × ${ex.reps} reps</div></div>${ex.last_weight?`<div class="last">Last: <b>${ex.last_weight}lbs × ${ex.last_reps}r × ${ex.last_sets}s</b></div>`:'<div class="last" style="color:#888">First session</div>'}<div class="inputs"><div class="ig"><label>Weight</label><input type="number" id="w${i}" placeholder="${ex.last_weight||0}" step="2.5" value="${ex.last_weight||''}" oninput="us(${i},'${ex.id}','${ex.name}')"></div><div class="ig"><label>Reps</label><input type="number" id="r${i}" placeholder="${ex.last_reps||8}" value="${ex.last_reps||''}" oninput="us(${i},'${ex.id}','${ex.name}')"></div><div class="ig"><label>Sets</label><input type="number" id="s${i}" value="${ex.sets}" oninput="us(${i},'${ex.id}','${ex.name}')"></div></div>${ex.notes?`<div style="font-size:11px;color:#888;margin-top:6px;font-style:italic">💡 ${ex.notes}</div>`:''}</div>`).join('')+
     `<button class="btn btn-p" onclick="saveSession()">✅ Complete Workout</button><div style="height:20px"></div>`;

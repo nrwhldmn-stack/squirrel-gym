@@ -265,7 +265,7 @@ async function loadHome(){
     <div><div class="macro-hdr"><span style="font-weight:600">Calories</span><span style="color:#888">${Math.round(t.calories)}${tgt?' / '+tgt.calories:''}</span></div><div class="pb-wrap"><div class="pb" style="width:${cPct}%;background:#3b82f6"></div></div></div>`;
   const dow=today.getDay()===0?6:today.getDay()-1;
   const days=[{d:0,n:'Chest + Tris (Day A)',s:'Mon'},{d:1,n:'Lagree 🧘',s:'Tue'},{d:2,n:'Back + Bis (Day B)',s:'Wed'},{d:3,n:'Lagree 🧘',s:'Thu'},{d:4,n:'Shoulders + Arms (Day C)',s:'Fri'},{d:5,n:'Rest / Lagree',s:'Sat'},{d:6,n:'Rest',s:'Sun'}];
-  document.getElementById('week-sched').innerHTML=days.map(d=>`<div style="display:flex;align-items:center;padding:6px 0;${d.d<6?'border-bottom:1px solid #222':''}"><div style="width:32px;font-size:11px;color:#888">${d.s}</div><div style="flex:1;font-size:12px${d.d===dow?';font-weight:700;color:#6ee7b7':'';}">${d.n}</div>${d.d===dow?'<div style="font-size:10px;color:#6ee7b7">TODAY</div>':''}</div>`).join('');
+  document.getElementById('week-sched').innerHTML=days.map(d=>`<div style="display:flex;align-items:center;padding:6px 0;${d.d<6?'border-bottom:1px solid #222':''}"><div style="width:32px;font-size:11px;color:#888">${d.s}</div><div style="flex:1;font-size:12px${d.d===dow?';font-weight:700;color:#6ee7b7':''}">${d.n}</div>${d.d===dow?'<div style="font-size:10px;color:#6ee7b7">TODAY</div>':''}</div>`).join('');
   document.getElementById('today-cta').innerHTML=todayW.rest_day
     ?`<div style="text-align:center;color:#888;padding:16px;font-size:13px">🧘 ${todayW.message}</div>`
     :`<button class="btn btn-p" onclick="openWorkout('${todayW.day_label}')">🏋️ Start Today — Day ${todayW.day_label}</button>`;

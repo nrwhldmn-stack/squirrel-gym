@@ -2,64 +2,395 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Squirrel Debug</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Squirrel Gym 🐿️</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0f0f0f; color: #f0f0f0; font-family: sans-serif; padding: 16px; }
-  .box { background: #1a1a1a; border: 1px solid #333; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
-  h2 { font-size: 16px; margin-bottom: 8px; }
-  .val { font-size: 13px; color: #6ee7b7; word-break: break-all; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f0f0f;color:#f0f0f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding-bottom:64px;min-height:100vh}
+.screen{padding:14px}
+.hidden{display:none!important}
+.nav{display:flex;background:#1a1a1a;border-top:1px solid #2a2a2a;position:fixed;bottom:0;left:0;right:0;z-index:999}
+.nb{flex:1;padding:8px 4px;border:none;background:none;color:#888;font-size:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.nb.on{color:#6ee7b7}
+.nb span{font-size:18px}
+.card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:14px;margin-bottom:12px}
+.ct{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+h1{font-size:20px;font-weight:700;margin-bottom:4px}
+h2{font-size:17px;font-weight:600;margin-bottom:12px}
+h3{font-size:14px;font-weight:600}
+.stat-row{display:flex;gap:8px;margin-bottom:12px}
+.stat{flex:1;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:10px;text-align:center}
+.sv{font-size:20px;font-weight:700}
+.sl{font-size:10px;color:#888;margin-top:2px}
+.ex-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:14px;margin-bottom:10px}
+.ex-name{font-weight:600;font-size:14px}
+.ex-tgt{font-size:11px;color:#888}
+.last{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:8px 10px;margin:8px 0;font-size:12px;color:#888}
+.last b{color:#60a5fa}
+.inputs{display:flex;gap:8px}
+.ig{flex:1}
+.ig label{font-size:10px;color:#888;display:block;margin-bottom:4px}
+.ig input{width:100%;background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:10px;color:#f0f0f0;font-size:16px;text-align:center}
+.ig input:focus{outline:none;border-color:#6ee7b7}
+.btn{width:100%;padding:13px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px}
+.btn-p{background:#6ee7b7;color:#000}
+.btn-s{background:#1a1a1a;border:1px solid #2a2a2a;color:#f0f0f0}
+.btn-sm{padding:8px 14px;font-size:13px;width:auto}
+.fg{margin-bottom:12px}
+.fg label{font-size:11px;color:#888;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+.fg input,.fg textarea{width:100%;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:11px;color:#f0f0f0;font-size:15px}
+.fg input:focus,.fg textarea:focus{outline:none;border-color:#6ee7b7}
+.fg textarea{resize:none;height:80px;font-family:inherit}
+.pb-wrap{background:#2a2a2a;border-radius:4px;height:8px;margin-top:6px}
+.pb{border-radius:4px;height:8px;transition:width .5s}
+.meal-item{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start}
+.mi-name{font-weight:600;font-size:14px}
+.mi-mac{font-size:11px;color:#888;margin-top:3px}
+.mi-del{background:none;border:none;color:#888;font-size:18px;cursor:pointer;padding:0 0 0 8px}
+.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 130px);padding:14px}
+.chat-msgs{flex:1;overflow-y:auto;padding:8px 0}
+.cmsg{margin-bottom:12px;max-width:85%}
+.cmsg.u{margin-left:auto}
+.cbub{padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.45}
+.cmsg.u .cbub{background:#3b82f6;color:#fff;border-bottom-right-radius:4px}
+.cmsg.a .cbub{background:#1a1a1a;border:1px solid #2a2a2a;border-bottom-left-radius:4px}
+.chat-row{display:flex;gap:8px;padding-top:10px;border-top:1px solid #2a2a2a;align-items:flex-end}
+.chat-in{flex:1;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:10px 16px;color:#f0f0f0;font-size:14px;font-family:inherit;resize:none;max-height:100px}
+.chat-in:focus{outline:none;border-color:#6ee7b7}
+.cs-btn{background:#6ee7b7;border:none;border-radius:50%;width:40px;height:40px;font-size:18px;cursor:pointer;flex-shrink:0}
+.photo-btn{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:50%;width:40px;height:40px;font-size:18px;cursor:pointer;flex-shrink:0}
+.typing{display:inline-flex;gap:4px;padding:10px 14px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:16px;border-bottom-left-radius:4px}
+.typing span{width:6px;height:6px;border-radius:50%;background:#888;animation:bounce 1s infinite}
+.typing span:nth-child(2){animation-delay:.15s}
+.typing span:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+.toast{position:fixed;bottom:74px;left:50%;transform:translateX(-50%);background:#22c55e;color:#000;padding:10px 20px;border-radius:20px;font-weight:600;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.back-btn{background:none;border:none;color:#6ee7b7;font-size:14px;cursor:pointer;padding:0 0 14px 0;display:flex;align-items:center;gap:5px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.wday{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between}
+.wday.today{border-color:#6ee7b7}
+.hist-item{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:11px;margin-bottom:8px}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.bg{background:rgba(110,231,183,.15);color:#6ee7b7}
+.bb{background:rgba(59,130,246,.15);color:#60a5fa}
+.macro-hdr{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+.setup-card{background:linear-gradient(135deg,rgba(110,231,183,.1),rgba(59,130,246,.1));border:1px solid rgba(110,231,183,.3);border-radius:14px;padding:20px;text-align:center;margin-bottom:16px}
+.tabs{display:flex;border-bottom:1px solid #2a2a2a;margin-bottom:16px}
+.tab{flex:1;padding:10px;background:none;border:none;color:#888;font-size:13px;cursor:pointer;border-bottom:2px solid transparent}
+.tab.on{color:#6ee7b7;border-bottom-color:#6ee7b7}
 </style>
 </head>
 <body>
-<div class="box" style="background:#ef4444;color:#fff">
-  <h2>🔴 STEP 1 — HTML renders</h2>
-  <p class="val">If you see this red box, HTML + CSS is working</p>
+
+<div id="toast" class="toast">✅ Saved!</div>
+
+<!-- ── HOME ── -->
+<div id="s-home" class="screen">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div><h1>Squirrel 🐿️</h1><div style="font-size:12px;color:#888" id="home-date"></div></div>
+  </div>
+  <div class="stat-row">
+    <div class="stat"><div class="sv" id="s-bf">—</div><div class="sl">Body Fat %</div></div>
+    <div class="stat"><div class="sv" id="s-wt">—</div><div class="sl">Weight lbs</div></div>
+    <div class="stat"><div class="sv" id="s-pro">—</div><div class="sl">Protein Today</div></div>
+  </div>
+  <div class="card" id="home-nutr"></div>
+  <div class="card"><div class="ct">This Week</div><div id="week-sched"></div></div>
+  <div id="today-cta"></div>
 </div>
 
-<div class="box" id="tg-box">
-  <h2>📱 Telegram SDK</h2>
-  <p class="val" id="tg-status">checking...</p>
+<!-- ── GYM ── -->
+<div id="s-gym" class="screen hidden">
+  <div id="gym-list">
+    <h2>Workouts</h2>
+    <div id="gym-days"></div>
+  </div>
+  <div id="gym-session" class="hidden">
+    <button class="back-btn" onclick="showGymList()">← Back</button>
+    <div id="session-content"></div>
+  </div>
 </div>
 
-<div class="box" id="viewport-box">
-  <h2>📐 Viewport</h2>
-  <p class="val" id="vp-size">checking...</p>
+<!-- ── NUTRITION ── -->
+<div id="s-nutr" class="screen hidden">
+  <div id="nutr-main">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="margin:0">Nutrition</h2>
+      <button class="btn btn-p btn-sm" onclick="showLogMeal()">+ Log Meal</button>
+    </div>
+    <div id="nutr-setup"></div>
+    <div id="nutr-macros"></div>
+    <div class="tabs">
+      <button class="tab on" onclick="nutrTab('today',this)">Today</button>
+      <button class="tab" onclick="nutrTab('hist',this)">History</button>
+    </div>
+    <div id="nt-today"><div id="meals-list"></div></div>
+    <div id="nt-hist" class="hidden"><div id="hist-list"></div></div>
+  </div>
+  <div id="nutr-log" class="hidden">
+    <button class="back-btn" onclick="showNutrMain()">← Back</button>
+    <h2>Log Meal</h2>
+    <div class="card">
+      <div class="fg"><label>Describe your meal</label><textarea id="meal-desc" placeholder="e.g. grilled salmon, cup of rice, broccoli..."></textarea></div>
+      <div style="text-align:center;color:#888;font-size:12px;margin-bottom:12px">or upload a photo</div>
+      <input type="file" id="meal-photo" accept="image/*" capture="environment" style="display:none" onchange="handleMealPhoto(event)">
+      <button class="btn btn-s" onclick="document.getElementById('meal-photo').click()">📷 Take / Upload Photo</button>
+      <div id="photo-preview" style="margin-top:10px"></div>
+      <button class="btn btn-p" onclick="estimateMeal()" id="est-btn">Estimate Macros →</button>
+    </div>
+    <div id="est-result" class="hidden">
+      <div class="card">
+        <div class="ct">AI Estimate — Review & Adjust</div>
+        <div class="fg"><label>Meal Name</label><input type="text" id="en"></div>
+        <div class="g2">
+          <div class="fg"><label>Protein (g)</label><input type="number" id="ep" step="1"></div>
+          <div class="fg"><label>Carbs (g)</label><input type="number" id="ec" step="1"></div>
+          <div class="fg"><label>Fat (g)</label><input type="number" id="ef" step="1"></div>
+          <div class="fg"><label>Calories</label><input type="number" id="ek" step="1"></div>
+        </div>
+        <div id="en-notes" style="font-size:12px;color:#888;margin-bottom:10px;font-style:italic"></div>
+        <button class="btn btn-p" onclick="confirmLog()">✅ Log This Meal</button>
+      </div>
+    </div>
+  </div>
+  <div id="nutr-tgts" class="hidden">
+    <button class="back-btn" onclick="showNutrMain()">← Back</button>
+    <h2>Set Targets</h2>
+    <div class="card">
+      <div class="g2">
+        <div class="fg"><label>Calories</label><input type="number" id="tc" placeholder="1900"></div>
+        <div class="fg"><label>Protein (g)</label><input type="number" id="tp" placeholder="160"></div>
+        <div class="fg"><label>Carbs (g)</label><input type="number" id="tca" placeholder="180"></div>
+        <div class="fg"><label>Fat (g)</label><input type="number" id="tf" placeholder="65"></div>
+      </div>
+      <button class="btn btn-p" onclick="saveTargets()">Save Targets</button>
+    </div>
+  </div>
 </div>
 
-<div class="box" id="api-box">
-  <h2>🌐 API call</h2>
-  <p class="val" id="api-status">checking...</p>
+<!-- ── COACH ── -->
+<div id="s-coach" class="screen hidden" style="padding:0">
+  <div class="chat-wrap">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h2 style="margin:0">Coach 🏆</h2>
+      <button onclick="clearChat()" style="background:none;border:none;color:#888;font-size:12px;cursor:pointer">Clear</button>
+    </div>
+    <div class="chat-msgs" id="chat-msgs">
+      <div class="cmsg a"><div class="cbub">Hey — I'm your coach. I have full context on your workouts, nutrition, and body metrics. Ask me anything, or send a photo of your meal to log it.</div></div>
+    </div>
+    <div class="chat-row">
+      <button class="photo-btn" onclick="triggerChatPhoto()">📷</button>
+      <input type="file" id="chat-photo-in" accept="image/*" capture="environment" style="display:none" onchange="handleChatPhoto(event)">
+      <textarea class="chat-in" id="chat-in" placeholder="Ask your coach..." rows="1" onkeydown="ckd(event)" oninput="ar(this)"></textarea>
+      <button class="cs-btn" onclick="sendChat()">↑</button>
+    </div>
+  </div>
 </div>
 
-<div class="box">
-  <h2>✅ All checks done</h2>
-  <p class="val">Report back what you see</p>
+<!-- ── METRICS ── -->
+<div id="s-metrics" class="screen hidden">
+  <h2>Body Metrics</h2>
+  <div class="card">
+    <div class="ct">Log Today</div>
+    <div class="g2">
+      <div class="fg"><label>Weight (lbs)</label><input type="number" id="mw" placeholder="186" step="0.1"></div>
+      <div class="fg"><label>Body Fat %</label><input type="number" id="mb" placeholder="15.0" step="0.1"></div>
+      <div class="fg"><label>Muscle %</label><input type="number" id="mm" placeholder="42" step="0.1"></div>
+      <div class="fg"><label>Waist (cm)</label><input type="number" id="mwa" placeholder="85" step="0.5"></div>
+      <div class="fg"><label>Chest (cm)</label><input type="number" id="mch" placeholder="100" step="0.5"></div>
+      <div class="fg"><label>Arm (cm)</label><input type="number" id="mar" placeholder="35" step="0.5"></div>
+    </div>
+    <button class="btn btn-p" onclick="logMetrics()">Save Metrics</button>
+  </div>
+  <div id="metrics-hist"></div>
 </div>
+
+<!-- ── NAV ── -->
+<nav class="nav">
+  <button class="nb on" onclick="go('home')" id="nb-home"><span>🏠</span>Home</button>
+  <button class="nb" onclick="go('gym')" id="nb-gym"><span>🏋️</span>Gym</button>
+  <button class="nb" onclick="go('nutr')" id="nb-nutr"><span>🥗</span>Nutrition</button>
+  <button class="nb" onclick="go('coach')" id="nb-coach"><span>🏆</span>Coach</button>
+  <button class="nb" onclick="go('metrics')" id="nb-metrics"><span>📊</span>Metrics</button>
+</nav>
 
 <script>
-// TG SDK check
-const tgEl = document.getElementById('tg-status');
-if (window.Telegram && window.Telegram.WebApp) {
-  tgEl.textContent = 'SDK loaded ✓ | isExpanded: ' + Telegram.WebApp.isExpanded + ' | h: ' + Telegram.WebApp.viewportHeight;
-  Telegram.WebApp.ready();
-  Telegram.WebApp.expand();
-} else {
-  tgEl.textContent = 'SDK NOT loaded (normal in browser)';
+const API='https://squirrel-gym-production.up.railway.app',UID=7955194359;
+let prog=null,curDay=null,sess={},pendPhoto=null,chatPhoto=null,nutrTgts=null;
+const DAY_LABELS={0:'A',2:'B',4:'C'};
+
+async function req(path,method='GET',body=null){
+  const o={method,headers:{'Content-Type':'application/json'}};
+  if(body)o.body=JSON.stringify(body);
+  const r=await fetch(API+path,o);
+  return r.json();
 }
 
-// Viewport
-document.getElementById('vp-size').textContent = 
-  'window: ' + window.innerWidth + 'x' + window.innerHeight + 
-  ' | screen: ' + screen.width + 'x' + screen.height;
+function toast(m='✅ Saved!'){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
 
-// API test
-fetch('https://squirrel-gym-production.up.railway.app/health')
-  .then(r => r.json())
-  .then(d => { document.getElementById('api-status').textContent = 'OK: ' + JSON.stringify(d); })
-  .catch(e => { document.getElementById('api-status').textContent = 'FAIL: ' + e.message; document.getElementById('api-box').style.background = '#ef4444'; });
+function go(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+  document.getElementById('s-'+name).classList.remove('hidden');
+  document.getElementById('nb-'+name).classList.add('on');
+  if(name==='metrics')loadMetHist();
+  if(name==='nutr')loadNutr();
+  if(name==='gym')loadGym();
+}
+
+// ── HOME ──
+async function loadHome(){
+  const today=new Date();
+  document.getElementById('home-date').textContent=today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  const [todayW,sessions,metrics,nutr]=await Promise.all([
+    req('/api/today?user_id='+UID),
+    req('/api/sessions?user_id='+UID+'&limit=50'),
+    req('/api/metrics?user_id='+UID+'&limit=2'),
+    req('/api/nutrition/today?user_id='+UID)
+  ]);
+  if(metrics.length){
+    const m=metrics[0];
+    document.getElementById('s-bf').textContent=m.body_fat_pct?m.body_fat_pct.toFixed(1)+'%':'—';
+    document.getElementById('s-wt').textContent=m.weight_lbs?m.weight_lbs.toFixed(1):'—';
+  }
+  const p=nutr.totals?.protein_g||0,tg=nutr.targets?.protein_g;
+  document.getElementById('s-pro').textContent=Math.round(p)+'g'+(tg?'/'+tg:'');
+  const t=nutr.totals,tgt=nutr.targets;
+  const pPct=tgt?Math.min(100,t.protein_g/tgt.protein_g*100):0;
+  const cPct=tgt?Math.min(100,t.calories/tgt.calories*100):0;
+  document.getElementById('home-nutr').innerHTML=`<div class="ct">Today's Nutrition</div>
+    <div style="margin-bottom:10px"><div class="macro-hdr"><span style="font-weight:600">Protein</span><span style="color:#888">${Math.round(t.protein_g)}g${tgt?' / '+tgt.protein_g+'g':''}</span></div><div class="pb-wrap"><div class="pb" style="width:${pPct}%;background:#6ee7b7"></div></div></div>
+    <div><div class="macro-hdr"><span style="font-weight:600">Calories</span><span style="color:#888">${Math.round(t.calories)}${tgt?' / '+tgt.calories:''}</span></div><div class="pb-wrap"><div class="pb" style="width:${cPct}%;background:#3b82f6"></div></div></div>`;
+  const dow=today.getDay()===0?6:today.getDay()-1;
+  const days=[{d:0,n:'Chest + Tris (Day A)',s:'Mon'},{d:1,n:'Lagree 🧘',s:'Tue'},{d:2,n:'Back + Bis (Day B)',s:'Wed'},{d:3,n:'Lagree 🧘',s:'Thu'},{d:4,n:'Shoulders + Arms (Day C)',s:'Fri'},{d:5,n:'Rest / Lagree',s:'Sat'},{d:6,n:'Rest',s:'Sun'}];
+  document.getElementById('week-sched').innerHTML=days.map(d=>`<div style="display:flex;align-items:center;padding:6px 0;${d.d<6?'border-bottom:1px solid #222':''}"><div style="width:32px;font-size:11px;color:#888">${d.s}</div><div style="flex:1;font-size:12px${d.d===dow?';font-weight:700;color:#6ee7b7':'';}">${d.n}</div>${d.d===dow?'<div style="font-size:10px;color:#6ee7b7">TODAY</div>':''}</div>`).join('');
+  document.getElementById('today-cta').innerHTML=todayW.rest_day
+    ?`<div style="text-align:center;color:#888;padding:16px;font-size:13px">🧘 ${todayW.message}</div>`
+    :`<button class="btn btn-p" onclick="openWorkout('${todayW.day_label}')">🏋️ Start Today — Day ${todayW.day_label}</button>`;
+}
+
+// ── GYM ──
+function showGymList(){document.getElementById('gym-list').classList.remove('hidden');document.getElementById('gym-session').classList.add('hidden')}
+async function loadGym(){
+  if(!prog)prog=await req('/api/program');
+  const dow=new Date().getDay()===0?6:new Date().getDay()-1,tl=DAY_LABELS[dow];
+  document.getElementById('gym-days').innerHTML=Object.entries(prog).map(([l,w])=>`<div class="wday${l===tl?' today':''}" onclick="openWorkout('${l}')"><div style="flex:1"><div style="font-weight:600;font-size:14px">Day ${l} — ${w.day}</div><div style="font-size:12px;color:#888">${w.name}</div></div><div style="color:#888;font-size:18px">›</div></div>`).join('');
+}
+async function openWorkout(dl){
+  go('gym');curDay=dl;sess={};
+  document.getElementById('gym-list').classList.add('hidden');
+  document.getElementById('gym-session').classList.remove('hidden');
+  const d=await req('/api/workout/'+dl+'?user_id='+UID),w=d.workout;
+  document.getElementById('session-content').innerHTML=`<h2>Day ${dl} — ${w.name}</h2>`+
+    w.exercises.map((ex,i)=>`<div class="ex-card"><div style="margin-bottom:6px"><div class="ex-name">${ex.name}</div><div class="ex-tgt">${ex.sets} sets × ${ex.reps} reps</div></div>${ex.last_weight?`<div class="last">Last: <b>${ex.last_weight}lbs × ${ex.last_reps}r × ${ex.last_sets}s</b></div>`:'<div class="last" style="color:#888">First session</div>'}<div class="inputs"><div class="ig"><label>Weight</label><input type="number" id="w${i}" placeholder="${ex.last_weight||0}" step="2.5" value="${ex.last_weight||''}" oninput="us(${i},'${ex.id}','${ex.name}')"></div><div class="ig"><label>Reps</label><input type="number" id="r${i}" placeholder="${ex.last_reps||8}" value="${ex.last_reps||''}" oninput="us(${i},'${ex.id}','${ex.name}')"></div><div class="ig"><label>Sets</label><input type="number" id="s${i}" value="${ex.sets}" oninput="us(${i},'${ex.id}','${ex.name}')"></div></div>${ex.notes?`<div style="font-size:11px;color:#888;margin-top:6px;font-style:italic">💡 ${ex.notes}</div>`:''}</div>`).join('')+
+    `<button class="btn btn-p" onclick="saveSession()">✅ Complete Workout</button><div style="height:20px"></div>`;
+}
+function us(i,id,name){const w=parseFloat(document.getElementById('w'+i)?.value)||0,r=parseFloat(document.getElementById('r'+i)?.value)||0,s=parseFloat(document.getElementById('s'+i)?.value)||0;sess[i]={exercise_id:id,name,weight:w,reps:r,sets:s}}
+async function saveSession(){
+  const ex=Object.values(sess).filter(e=>e.weight>0);
+  if(!ex.length){toast('⚠️ Log at least one exercise');return}
+  await req('/api/workout/log','POST',{user_id:UID,day_label:curDay,exercises:ex});
+  toast('🏋️ Workout saved!');setTimeout(()=>{showGymList();go('home');loadHome()},1200);
+}
+
+// ── NUTRITION ──
+async function loadNutr(){
+  const [nutr,tgts]=await Promise.all([req('/api/nutrition/today?user_id='+UID),req('/api/nutrition/targets?user_id='+UID)]);
+  nutrTgts=tgts;
+  document.getElementById('nutr-setup').innerHTML=tgts.calories
+    ?`<div style="text-align:right;margin-bottom:8px"><button onclick="showTgts()" style="background:none;border:none;color:#888;font-size:12px;cursor:pointer">Edit targets ⚙️</button></div>`
+    :`<div class="setup-card"><div style="font-size:28px;margin-bottom:8px">🎯</div><div style="font-weight:600;margin-bottom:6px">Set Your Targets</div><div style="font-size:13px;color:#888;margin-bottom:12px">Set daily macro targets to track progress</div><button class="btn btn-p btn-sm" onclick="showTgts()">Set Targets</button></div>`;
+  const t=nutr.totals,tg=tgts;
+  if(tg.calories){
+    const ms=[{l:'Protein',v:Math.round(t.protein_g),tg:tg.protein_g,u:'g',c:'#6ee7b7'},{l:'Carbs',v:Math.round(t.carbs_g),tg:tg.carbs_g,u:'g',c:'#3b82f6'},{l:'Fat',v:Math.round(t.fat_g),tg:tg.fat_g,u:'g',c:'#f97316'},{l:'Calories',v:Math.round(t.calories),tg:tg.calories,u:'',c:'#a78bfa'}];
+    document.getElementById('nutr-macros').innerHTML='<div class="card"><div class="ct">Today\'s Macros</div>'+ms.map(m=>`<div style="margin-bottom:12px"><div class="macro-hdr"><span style="font-weight:600">${m.l}</span><span style="color:#888">${m.v}${m.u} / ${m.tg}${m.u}</span></div><div class="pb-wrap"><div class="pb" style="width:${Math.min(100,m.v/m.tg*100)}%;background:${m.c}"></div></div></div>`).join('')+'</div>';
+  } else {
+    document.getElementById('nutr-macros').innerHTML=`<div class="card"><div style="display:flex;gap:12px;flex-wrap:wrap"><span style="font-size:13px">🥩 ${Math.round(t.protein_g)}g protein</span><span style="font-size:13px">🍞 ${Math.round(t.carbs_g)}g carbs</span><span style="font-size:13px">🔥 ${Math.round(t.calories)} cal</span></div></div>`;
+  }
+  document.getElementById('meals-list').innerHTML=nutr.meals.length
+    ?nutr.meals.map(m=>`<div class="meal-item"><div class="mi-info"><div class="mi-name">${m.meal_name}</div><div class="mi-mac">${Math.round(m.protein_g)}g P · ${Math.round(m.carbs_g)}g C · ${Math.round(m.fat_g)}g F · ${m.calories} cal</div></div><button class="mi-del" onclick="delMeal(${m.id})">×</button></div>`).join('')
+    :'<div style="text-align:center;padding:40px 20px;color:#888"><div style="font-size:40px;margin-bottom:12px">🍽️</div><p>No meals logged yet today</p></div>';
+}
+async function delMeal(id){await req('/api/nutrition/meal/'+id+'?user_id='+UID,'DELETE');toast('Deleted');loadNutr()}
+function nutrTab(t,el){document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));el.classList.add('on');document.getElementById('nt-today').classList[t==='today'?'remove':'add']('hidden');document.getElementById('nt-hist').classList[t==='hist'?'remove':'add']('hidden');if(t==='hist')loadNutrHist()}
+async function loadNutrHist(){
+  const data=await req('/api/nutrition/history?user_id='+UID+'&days=30');
+  document.getElementById('hist-list').innerHTML=data.length
+    ?data.map(d=>{const pp=nutrTgts?.protein_g?Math.round(d.protein_g/nutrTgts.protein_g*100):null;return`<div class="hist-item"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:600;font-size:13px">${new Date(d.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div><div style="font-size:11px;color:#888;margin-top:2px">${Math.round(d.protein_g)}g protein · ${Math.round(d.calories)} cal · ${d.meal_count} meals</div></div>${pp!==null?`<span class="badge ${pp>=90?'bg':'bb'}">${pp}% protein</span>`:''}</div></div>`}).join('')
+    :'<div style="text-align:center;padding:40px;color:#888">No history yet</div>';
+}
+function showLogMeal(){document.getElementById('nutr-main').classList.add('hidden');document.getElementById('nutr-log').classList.remove('hidden');document.getElementById('nutr-tgts').classList.add('hidden');document.getElementById('est-result').classList.add('hidden');document.getElementById('meal-desc').value='';document.getElementById('photo-preview').innerHTML='';pendPhoto=null}
+function showNutrMain(){document.getElementById('nutr-main').classList.remove('hidden');document.getElementById('nutr-log').classList.add('hidden');document.getElementById('nutr-tgts').classList.add('hidden')}
+function showTgts(){document.getElementById('nutr-main').classList.add('hidden');document.getElementById('nutr-log').classList.add('hidden');document.getElementById('nutr-tgts').classList.remove('hidden');if(nutrTgts){document.getElementById('tc').value=nutrTgts.calories||'';document.getElementById('tp').value=nutrTgts.protein_g||'';document.getElementById('tca').value=nutrTgts.carbs_g||'';document.getElementById('tf').value=nutrTgts.fat_g||''}}
+function handleMealPhoto(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{pendPhoto={base64:ev.target.result.split(',')[1],type:f.type};document.getElementById('photo-preview').innerHTML=`<img src="${ev.target.result}" style="width:100%;border-radius:8px;max-height:200px;object-fit:cover">`};r.readAsDataURL(f)}
+async function estimateMeal(){
+  const desc=document.getElementById('meal-desc').value.trim();
+  if(!desc&&!pendPhoto){toast('⚠️ Describe the meal or upload a photo');return}
+  const btn=document.getElementById('est-btn');btn.textContent='Estimating...';btn.disabled=true;
+  try{
+    const p={description:desc||null};
+    if(pendPhoto){p.image_base64=pendPhoto.base64;p.image_media_type=pendPhoto.type}
+    const e=await req('/api/nutrition/estimate','POST',p);
+    document.getElementById('en').value=e.meal_name||'';
+    document.getElementById('ep').value=e.protein_g||0;
+    document.getElementById('ec').value=e.carbs_g||0;
+    document.getElementById('ef').value=e.fat_g||0;
+    document.getElementById('ek').value=e.calories||0;
+    document.getElementById('en-notes').textContent=e.notes||'';
+    document.getElementById('est-result').classList.remove('hidden');
+  }catch(err){toast('⚠️ Estimation failed')}
+  btn.textContent='Estimate Macros →';btn.disabled=false;
+}
+async function confirmLog(){
+  await req('/api/nutrition/log','POST',{user_id:UID,meal_name:document.getElementById('en').value,protein_g:parseFloat(document.getElementById('ep').value)||0,carbs_g:parseFloat(document.getElementById('ec').value)||0,fat_g:parseFloat(document.getElementById('ef').value)||0,calories:parseInt(document.getElementById('ek').value)||0,description:document.getElementById('meal-desc').value||null});
+  toast('🥗 Meal logged!');showNutrMain();loadNutr();loadHome();
+}
+async function saveTargets(){
+  const d={user_id:UID,calories:parseInt(document.getElementById('tc').value)||0,protein_g:parseInt(document.getElementById('tp').value)||0,carbs_g:parseInt(document.getElementById('tca').value)||0,fat_g:parseInt(document.getElementById('tf').value)||0};
+  if(!d.calories||!d.protein_g){toast('⚠️ Fill calories and protein');return}
+  await req('/api/nutrition/targets','POST',d);toast('🎯 Targets saved!');showNutrMain();loadNutr();
+}
+
+// ── COACH ──
+function ar(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px'}
+function ckd(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat()}}
+function triggerChatPhoto(){document.getElementById('chat-photo-in').click()}
+async function handleChatPhoto(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=async ev=>{chatPhoto={base64:ev.target.result.split(',')[1],type:f.type};addMsg('u','📷 [Photo sent]');await doChat('What are the macros in this meal?',chatPhoto);chatPhoto=null;e.target.value=''};r.readAsDataURL(f)}
+async function sendChat(){const el=document.getElementById('chat-in'),m=el.value.trim();if(!m&&!chatPhoto)return;el.value='';el.style.height='auto';if(m)addMsg('u',m);await doChat(m,chatPhoto)}
+async function doChat(msg,photo=null){
+  const typing=addTyping();
+  try{
+    const p={user_id:UID,message:msg||''};
+    if(photo){p.image_base64=photo.base64;p.image_media_type=photo.type}
+    const r=await req('/api/coach/chat','POST',p);
+    typing.remove();addMsg('a',r.reply);
+  }catch(e){typing.remove();addMsg('a','Something went wrong. Try again.')}
+}
+function addMsg(role,text){const el=document.createElement('div');el.className='cmsg '+role;el.innerHTML=`<div class="cbub">${text.replace(/\n/g,'<br>')}</div>`;const msgs=document.getElementById('chat-msgs');msgs.appendChild(el);msgs.scrollTop=msgs.scrollHeight;return el}
+function addTyping(){const el=document.createElement('div');el.className='cmsg a';el.innerHTML='<div class="typing"><span></span><span></span><span></span></div>';const msgs=document.getElementById('chat-msgs');msgs.appendChild(el);msgs.scrollTop=msgs.scrollHeight;return el}
+function clearChat(){document.getElementById('chat-msgs').innerHTML='<div class="cmsg a"><div class="cbub">Hey — I\'m your coach. Ask me anything or send a meal photo.</div></div>'}
+
+// ── METRICS ──
+async function logMetrics(){
+  await req('/api/metrics','POST',{user_id:UID,weight_lbs:parseFloat(document.getElementById('mw').value)||null,body_fat_pct:parseFloat(document.getElementById('mb').value)||null,muscle_mass_pct:parseFloat(document.getElementById('mm').value)||null,waist_cm:parseFloat(document.getElementById('mwa').value)||null,chest_cm:parseFloat(document.getElementById('mch').value)||null,arm_cm:parseFloat(document.getElementById('mar').value)||null});
+  toast('📊 Metrics saved!');loadMetHist();loadHome();
+}
+async function loadMetHist(){
+  const data=await req('/api/metrics?user_id='+UID+'&limit=14');
+  document.getElementById('metrics-hist').innerHTML=data.length
+    ?'<h3 style="margin-bottom:10px">History</h3>'+data.map(m=>`<div class="hist-item"><div style="display:flex;justify-content:space-between"><div><div style="font-weight:600;font-size:13px">${new Date(m.metric_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div><div style="font-size:11px;color:#888;margin-top:2px">${m.weight_lbs?m.weight_lbs+'lbs':''} ${m.body_fat_pct?'· '+m.body_fat_pct+'% BF':''}</div></div>${m.body_fat_pct?`<div style="font-size:20px;font-weight:700;color:#6ee7b7">${m.body_fat_pct}%</div>`:''}</div></div>`).join('')
+    :'<div style="text-align:center;padding:40px;color:#888"><div style="font-size:40px;margin-bottom:12px">📊</div><p>No metrics yet</p></div>';
+}
+
+// ── INIT ──
+async function init(){
+  if(window.Telegram?.WebApp){Telegram.WebApp.ready();Telegram.WebApp.expand()}
+  await loadHome();
+  await loadGym();
+}
+init();
 </script>
 </body>
 </html>

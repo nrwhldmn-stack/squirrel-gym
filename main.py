@@ -21,12 +21,16 @@ APP_URL = f"https://{os.environ.get('RAILWAY_PUBLIC_DOMAIN', '')}"
 
 db_pool = None
 
+async def _init_conn(conn):
+    await conn.set_type_codec('json', encoder=json.dumps, decoder=json.loads, schema='pg_catalog')
+    await conn.set_type_codec('jsonb', encoder=json.dumps, decoder=json.loads, schema='pg_catalog')
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global db_pool
     for attempt in range(10):
         try:
-            db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10)
+            db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=2, max_size=10, init=_init_conn)
             await init_db()
             logger.info("DB pool created")
             break

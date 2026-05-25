@@ -289,10 +289,25 @@ async function openWorkout(dl){
 }
 function us(i,id,name){const w=parseFloat(document.getElementById('w'+i)?.value)||0,r=parseFloat(document.getElementById('r'+i)?.value)||0,s=parseFloat(document.getElementById('s'+i)?.value)||0;sess[i]={exercise_id:id,name,weight:w,reps:r,sets:s}}
 async function saveSession(){
+  // Fallback: read directly from DOM if oninput didn't fire
+  if(!prog||!curDay)return;
+  const exList=prog[curDay]?.exercises||[];
+  exList.forEach((ex,i)=>{
+    const w=parseFloat(document.getElementById('w'+i)?.value)||0;
+    const r=parseFloat(document.getElementById('r'+i)?.value)||0;
+    const s=parseFloat(document.getElementById('s'+i)?.value)||0;
+    if(w>0)sess[i]={exercise_id:ex.id,name:ex.name,weight:w,reps:r,sets:s};
+  });
   const ex=Object.values(sess).filter(e=>e.weight>0);
-  if(!ex.length){toast('⚠️ Log at least one exercise');return}
-  await req('/api/workout/log','POST',{user_id:UID,day_label:curDay,exercises:ex});
-  toast('🏋️ Workout saved!');setTimeout(()=>{showGymList();go('home');loadHome()},1200);
+  if(!ex.length){toast('⚠️ Log at least one weight');return}
+  try{
+    await req('/api/workout/log','POST',{user_id:UID,day_label:curDay,exercises:ex});
+    toast('🏋️ Workout saved!');
+    setTimeout(()=>{showGymList();go('home');loadHome()},1200);
+  }catch(e){
+    toast('⚠️ Save failed — check connection');
+    console.error('saveSession',e);
+  }
 }
 
 // ── NUTRITION ──

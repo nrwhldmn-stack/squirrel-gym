@@ -145,7 +145,10 @@ async def get_last_session(user_id: int, day_label: str):
             WHERE user_id=$1 AND day_label=$2
             ORDER BY session_date DESC LIMIT 1
         """, user_id, day_label)
-        return dict(row) if row else None
+        if not row: return None
+        d = dict(row)
+        if isinstance(d.get("exercises"), str): d["exercises"] = json.loads(d["exercises"])
+        return d
 
 # ─── WORKOUT API ──────────────────────────────────────────────────────────────
 
@@ -211,7 +214,7 @@ async def get_sessions(user_id: int = AUTHORIZED_USER_ID, limit: int = 50):
             SELECT id, day_label, session_date, exercises FROM workout_sessions
             WHERE user_id=$1 ORDER BY session_date DESC LIMIT $2
         """, user_id, limit)
-    return [{"id": r["id"], "day_label": r["day_label"], "session_date": str(r["session_date"]), "exercises": r["exercises"]} for r in rows]
+    return [{"id": r["id"], "day_label": r["day_label"], "session_date": str(r["session_date"]), "exercises": json.loads(r["exercises"]) if isinstance(r["exercises"], str) else r["exercises"]} for r in rows]
 
 # ─── BODY METRICS API ─────────────────────────────────────────────────────────
 
@@ -455,7 +458,7 @@ async def get_coach_context(user_id: int) -> str:
     if workout_rows:
         ctx += "RECENT WORKOUTS (last 14 days):\n"
         for w in workout_rows:
-            exs = [f"{e.get('name','?')} {e.get('weight','')}lbs×{e.get('reps','')}×{e.get('sets','')}s" for e in w['exercises'][:3]]
+            exs = [f"{e.get('name','?')} {e.get('weight','')}lbs×{e.get('reps','')}×{e.get('sets','')}s" for e in (json.loads(w['exercises']) if isinstance(w['exercises'], str) else w['exercises'])[:3]]
             ctx += f"- {w['session_date']} Day {w['day_label']}: {', '.join(exs)}...\n"
     
     return ctx

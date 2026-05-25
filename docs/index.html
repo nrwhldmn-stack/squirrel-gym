@@ -222,8 +222,8 @@ let prog=null,curDay=null,sess={},pendPhoto=null,chatPhoto=null,nutrTgts=null;
 const DAY_LABELS={0:'A',2:'B',4:'C'};
 
 async function req(path,method='GET',body=null){
-  const o={method,headers:{'Content-Type':'application/json'}};
-  if(body)o.body=JSON.stringify(body);
+  const o={method};
+  if(body){o.headers={'Content-Type':'application/json'};o.body=JSON.stringify(body);}
   const r=await fetch(API+path,o);
   return r.json();
 }
@@ -386,11 +386,13 @@ async function loadMetHist(){
 
 // ── INIT ──
 async function init(){
-  if(window.Telegram?.WebApp){Telegram.WebApp.ready();Telegram.WebApp.expand()}
-  await loadHome();
-  await loadGym();
+  try{
+    if(window.Telegram?.WebApp){Telegram.WebApp.ready();Telegram.WebApp.expand()}
+  }catch(e){}
+  try{ await loadHome(); }catch(e){ console.error('loadHome',e); }
+  try{ await loadGym(); }catch(e){ console.error('loadGym',e); }
 }
-init();
+init().catch(e=>console.error('init',e));
 </script>
 </body>
 </html>
